@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+/* Light Theme (Default) */
+:root,
+.light {
+  /* Light Theme Palette */
+  --cream-light: #FFF2C6;
+  --cream-lighter: #FFF8DE;
+  --light-blue: #AAC4F5;
+  --medium-blue: #8CA9FF;
+  
+  /* Light Theme Colors */
+  --background: var(--cream-lighter);
+  --foreground: #1a1a1a;
+  --card: var(--cream-light);
+  --card-muted: var(--cream-lighter);
+  --accent: var(--medium-blue);
+  --accent-light: var(--light-blue);
+  --accent-muted: rgba(140, 169, 255, 0.15);
+  --border: rgba(140, 169, 255, 0.3);
+  --border-strong: rgba(140, 169, 255, 0.5);
+  --text-primary: #1a1a1a;
+  --text-secondary: #2d3748;
+  --text-secondary-muted: #4a5568;
+  --text-muted: #718096;
+  --accent-shadow: rgba(140, 169, 255, 0.3);
+  --red-error-text: #dc2626;
+  
+  /* Form Colors for Light Mode */
+  --form-input-bg: #ffffff;
+  --form-input-border: var(--border-strong);
+  --form-input-text: var(--text-primary);
+  --form-label-text: var(--text-secondary);
+  --form-button-bg: var(--accent);
+  --form-button-text: #ffffff;
+  --form-button-hover: #7a9aff;
+  --icon-color: var(--text-secondary);
+  --icon-color-primary: var(--text-primary);
+}
+
+/* Dark Theme */
+.dark {
+  /* Dark Theme Palette */
+  --cream: #FAF9F6;
+  --light-blue-dark: #ADD8E6;
+  --medium-blue: #4682B4;
+  --black: #000000;
+  
+  /* Dark Theme Colors */
+  --background: var(--black);
+  --foreground: var(--cream);
+  --card: #1a1a1a;
+  --card-muted: #2a2a2a;
+  --accent: var(--medium-blue);
+  --accent-light: var(--light-blue-dark);
+  --border: rgba(70, 130, 180, 0.2);
+  --border-strong: rgba(70, 130, 180, 0.3);
+  --text-primary: var(--cream);
+  --text-secondary: rgba(173, 216, 230, 0.9);
+  --text-muted: rgba(173, 216, 230, 0.7);
+  
+  /* Form Colors for Dark Mode */
+  --form-input-bg: rgba(0, 0, 0, 0.6);
+  --form-input-border: rgba(70, 130, 180, 0.3);
+  --form-input-text: var(--cream);
+  --form-label-text: rgba(173, 216, 230, 0.8);
+  --form-button-bg: var(--medium-blue);
+  --form-button-text: var(--cream);
+  --form-button-hover: #5a9bc4;
+  --icon-color: rgba(173, 216, 230, 0.9);
+  --icon-color-primary: var(--cream);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.light body {
+  background: linear-gradient(to bottom, var(--cream-lighter), var(--cream-light), var(--light-blue), var(--medium-blue));
+  background-attachment: fixed;
+}
+
+.dark body {
+  background: linear-gradient(to bottom, var(--cream), var(--light-blue-dark), var(--medium-blue), var(--black));
+  background-attachment: fixed;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: var(--medium-blue);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(70, 130, 180, 0.5);
+}
+
+.light ::-webkit-scrollbar-track {
+  background: var(--cream-light);
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+/* Form input focus states */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--accent) !important;
+  outline: none;
+}
+
+input:not(:focus),
+textarea:not(:focus),
+select:not(:focus) {
+  border-color: var(--form-input-border);
+}
