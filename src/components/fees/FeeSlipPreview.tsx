@@ -190,7 +190,7 @@ export const FeeSlipPreview = ({ record, onClose }: Props) => {
                 <li>Month: {monthLabel(record.month, record.year)}</li>
                 <li>Method: {record.method}</li>
                 <li>Status: {record.status}</li>
-                <li>Paid on: {format(paidOn, "PPPpp")}</li>
+              <li>Paid on: {paidOn ? format(paidOn, "PPPpp") : "Not paid yet"}</li>
               </ul>
             </div>
             <div className="rounded-2xl border border-slate-200 p-4 text-slate-700">
