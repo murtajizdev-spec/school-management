@@ -34,21 +34,22 @@ export async function GET(request: Request) {
   const outstandingStudents: OutstandingStudentDTO[] = [];
 
   for (const record of records) {
-    if (!record.student || record.student.status !== "active") {
+    const student = record.student as any;
+    if (!student || typeof student !== "object" || student.status !== "active") {
       continue;
     }
     const outstanding = Math.max(record.amountDue - record.amountPaid, 0);
     if (outstanding <= 0) continue;
 
     outstandingStudents.push({
-      _id: record.student._id.toString(),
-      admissionNo: record.student.admissionNo,
-      name: record.student.name,
-      classGroup: record.student.classGroup,
-      className: record.student.className,
+      _id: student._id?.toString?.() ?? "",
+      admissionNo: student.admissionNo,
+      name: student.name,
+      classGroup: student.classGroup,
+      className: student.className,
       month: record.month,
       year: record.year,
-      monthlyFee: record.student.monthlyFee,
+      monthlyFee: student.monthlyFee,
       outstanding,
     });
   }
