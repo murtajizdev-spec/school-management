@@ -37,7 +37,7 @@ const feeTotalsForMatch = async (match: Record<string, unknown>): Promise<FeeTot
 
 const outstandingForMonthYear = async (month: number, year: number) => {
   const studentsWithFees = await StudentModel.aggregate<{
-    outstanding: number;
+    totalOutstanding: number;
   }>([
     { $match: { status: "active" } },
     {
