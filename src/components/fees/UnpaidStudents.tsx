@@ -96,7 +96,7 @@ export const UnpaidStudents = ({ month, year, title, scrollable = true, maxHeigh
             <td>${student.name}</td>
             <td>${student.admissionNo}</td>
             <td>${student.classGroup} - ${student.className}</td>
-            <td>${monthLabel(student.month, student.year)}</td>
+            <td>${monthLabel(data.month, data.year)}</td>
             <td style="text-align:right">${formatCurrency(student.outstanding)}</td>
             <td style="text-align:right">${formatCurrency(student.monthlyFee)}</td>
           </tr>`
