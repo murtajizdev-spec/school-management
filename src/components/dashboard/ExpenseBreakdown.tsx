@@ -63,8 +63,8 @@ export const ExpenseBreakdown = () => {
           No expense records yet. Salary slips automatically appear here.
         </p>
       ) : (
-        <div className="mt-6 h-64">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="mt-6" style={{ minHeight: 260, minWidth: 200 }}>
+          <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie
                 data={chartData}
