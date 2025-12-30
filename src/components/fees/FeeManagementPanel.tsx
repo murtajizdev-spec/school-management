@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { formatCurrency, monthLabel } from "@/lib/utils";
 import { FeeRecordDTO, StudentDTO } from "@/types/models";
 import { useDashboardRefresh } from "@/hooks/useDashboardRefresh";
+import { CLASS_NAMES } from "@/types/enums";
 
 export const FeeManagementPanel = () => {
   const { data: students } = useSWR<StudentDTO[]>("/api/students");
@@ -38,6 +39,22 @@ export const FeeManagementPanel = () => {
   const [ledgerStudentId, setLedgerStudentId] = useState<string>("");
   const [slipRecord, setSlipRecord] = useState<FeeRecordDTO | undefined>();
   const { refreshDashboard } = useDashboardRefresh();
+  const [classFilter, setClassFilter] = useState<"all" | (typeof CLASS_NAMES)[number]>("all");
+
+  const filteredStudents = useMemo(() => {
+    if (!students) return [];
+    if (classFilter === "all") return students;
+    return students.filter((s) => s.className === classFilter);
+  }, [students, classFilter]);
+
+  useEffect(() => {
+    if (
+      ledgerStudentId &&
+      !filteredStudents.some((s) => s._id === ledgerStudentId)
+    ) {
+      setLedgerStudentId("");
+    }
+  }, [ledgerStudentId, filteredStudents]);
 
   const filteredFees = useMemo(() => {
     if (!fees) return [];
@@ -48,9 +65,11 @@ export const FeeManagementPanel = () => {
         fee.student?.name?.toLowerCase().includes(needle) ||
         fee.student?.admissionNo?.toLowerCase().includes(needle);
       const isCurrentMonth = fee.month === currentMonth && fee.year === currentYear;
-      return matchesSearch && isCurrentMonth;
+      const matchesClass =
+        classFilter === "all" ? true : fee.student?.className === classFilter;
+      return matchesSearch && isCurrentMonth && matchesClass;
     });
-  }, [fees, search, currentMonth, currentYear]);
+  }, [fees, search, currentMonth, currentYear, classFilter]);
 
   const ledgerRecords = useMemo(() => {
     if (!ledgerStudentId || !fees) return [];
@@ -185,7 +204,7 @@ export const FeeManagementPanel = () => {
           </div>
           <div className="mt-6">
             <FeePaymentForm
-              students={students}
+              students={filteredStudents}
               onSuccess={async (record) => {
                 setSlipRecord(record);
                 await refreshAll();
@@ -259,6 +278,27 @@ export const FeeManagementPanel = () => {
                   onChange={(event) => setSearch(event.target.value)}
                 />
               </div>
+              <select
+                value={classFilter}
+                onChange={(event) =>
+                  setClassFilter(
+                    event.target.value as "all" | (typeof CLASS_NAMES)[number]
+                  )
+                }
+                className="rounded-full border px-3 py-2 text-sm"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--card-muted)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                <option value="all">All classes</option>
+                {CLASS_NAMES.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-3 max-h-[360px] overflow-y-auto pr-2">
@@ -382,7 +422,7 @@ export const FeeManagementPanel = () => {
           </div>
           <div className="w-full md:w-auto">
             <SearchableStudentSelect
-              students={students}
+              students={filteredStudents}
               value={ledgerStudentId}
               onChange={setLedgerStudentId}
               placeholder="Search student for ledger..."

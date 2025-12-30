@@ -8,6 +8,8 @@ export interface IFeeRecord extends Document {
   amountDue: number;
   amountPaid: number;
   admissionFeePortion?: number;
+  scholarshipPercent?: number;
+  scholarshipAmount?: number;
   paidOn?: Date;
   method: PaymentMethod;
   slipNumber: string;
@@ -30,6 +32,8 @@ const FeeRecordSchema = new Schema<IFeeRecord>(
     amountDue: { type: Number, required: true },
     amountPaid: { type: Number, default: 0 },
     admissionFeePortion: { type: Number },
+    scholarshipPercent: { type: Number, default: 0, min: 0, max: 100 },
+    scholarshipAmount: { type: Number, default: 0 },
     paidOn: { type: Date },
     method: {
       type: String,

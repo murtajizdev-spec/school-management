@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { CLASS_GROUPS, STUDENT_STATUS } from "@/types/enums";
+import { CLASS_GROUPS, CLASS_NAMES, STUDENT_STATUS } from "@/types/enums";
 
 export const studentSchema = z.object({
   admissionNo: z.string().optional(),
   name: z.string().min(3),
   classGroup: z.enum(CLASS_GROUPS),
-  className: z.string().min(1, "Class is required"),
+  className: z.enum(CLASS_NAMES),
   dob: z.string().transform((value) => new Date(value)),
   cellNo: z.string().min(10),
   bFormNo: z.string().min(5),
@@ -14,6 +14,11 @@ export const studentSchema = z.object({
   fatherCellNo: z.string().min(10),
   admissionFee: z.number().nonnegative(),
   monthlyFee: z.number().nonnegative(),
+  scholarshipPercent: z
+    .number()
+    .min(0, "Min 0%")
+    .max(100, "Max 100%")
+    .optional(),
   admissionDate: z
     .string()
     .optional()

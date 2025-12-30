@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import { motion } from "framer-motion";
 import {
@@ -20,6 +20,7 @@ import { formatCurrency } from "@/lib/utils";
 import { StudentDTO } from "@/types/models";
 import { useDashboardRefresh } from "@/hooks/useDashboardRefresh";
 import { DashboardRefreshButton } from "@/components/dashboard/DashboardRefreshButton";
+import { CLASS_NAMES } from "@/types/enums";
 
 export const StudentsPanel = () => {
   const { data, mutate, isLoading } = useSWR<StudentDTO[]>("/api/students");
@@ -27,10 +28,63 @@ export const StudentsPanel = () => {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "left">(
     "all"
   );
+  const [classFilter, setClassFilter] = useState<"all" | (typeof CLASS_NAMES)[number]>("all");
   const [editingStudent, setEditingStudent] = useState<StudentDTO | undefined>();
   const [previewStudent, setPreviewStudent] =
     useState<StudentDTO | undefined>();
   const { refreshDashboard } = useDashboardRefresh();
+  const formRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (editingStudent && formRef.current) {
+      formRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      toast.custom(
+        (t) => (
+          <div
+            className="w-full max-w-xs rounded-xl border p-3 text-sm shadow-lg"
+            style={{
+              backgroundColor: "var(--card)",
+              borderColor: "var(--border)",
+              color: "var(--text-primary)",
+            }}
+          >
+            <p className="font-semibold">Editing student</p>
+            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+              {editingStudent.name} · {editingStudent.admissionNo}
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                className="rounded-lg px-3 py-1 text-xs font-semibold text-white shadow-sm transition"
+                style={{ backgroundColor: "var(--accent)" }}
+                onClick={() => {
+                  formRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                  toast.dismiss(t.id);
+                }}
+              >
+                Jump to form
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border px-3 py-1 text-xs font-semibold transition"
+                style={{
+                  borderColor: "var(--border)",
+                  color: "var(--text-primary)",
+                }}
+                onClick={() => toast.dismiss(t.id)}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        ),
+        { duration: 4500 }
+      );
+    }
+  }, [editingStudent]);
 
   const filteredStudents = useMemo(() => {
     if (!data) return [];
@@ -40,9 +94,11 @@ export const StudentsPanel = () => {
         student.admissionNo.toLowerCase().includes(search.toLowerCase());
       const matchesStatus =
         statusFilter === "all" ? true : student.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesClass =
+        classFilter === "all" ? true : student.className === classFilter;
+      return matchesSearch && matchesStatus && matchesClass;
     });
-  }, [data, search, statusFilter]);
+  }, [data, search, statusFilter, classFilter]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this student? This action cannot be undone.")) return;
@@ -118,6 +174,7 @@ export const StudentsPanel = () => {
             backgroundColor: "var(--card)",
             color: "var(--text-primary)",
           }}
+          ref={formRef}
         >
           <div className="flex items-center justify-between">
             <div>
@@ -212,6 +269,33 @@ export const StudentsPanel = () => {
                 extraKeys={["/api/students", "/api/students?limit=5"]}
               />
             </div>
+          </div>
+
+          <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+            <span className="text-xs uppercase tracking-[0.2em]" style={{ color: "var(--text-secondary)" }}>
+              Filter by class
+            </span>
+            <select
+              value={classFilter}
+              onChange={(event) =>
+                setClassFilter(
+                  event.target.value as "all" | (typeof CLASS_NAMES)[number]
+                )
+              }
+              className="w-full max-w-xs rounded-full border px-3 py-2 text-sm"
+              style={{
+                borderColor: "var(--border)",
+                backgroundColor: "var(--card-muted)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <option value="all">All classes</option>
+              {CLASS_NAMES.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div

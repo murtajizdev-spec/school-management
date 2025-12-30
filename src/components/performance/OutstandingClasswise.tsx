@@ -1,10 +1,12 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { motion } from "framer-motion";
 import { AlertTriangle, DownloadCloud } from "lucide-react";
 import { formatCurrency, monthLabel } from "@/lib/utils";
 import { OutstandingClasswiseDTO } from "@/types/models";
+import { CLASS_NAMES } from "@/types/enums";
 
 type Props = {
   month?: number;
@@ -13,18 +15,23 @@ type Props = {
 };
 
 export const OutstandingClasswise = ({ month, year, title }: Props) => {
+  const [classNameFilter, setClassNameFilter] = useState<"all" | (typeof CLASS_NAMES)[number]>("all");
   const query = new URLSearchParams();
   if (month) query.set("month", String(month));
   if (year) query.set("year", String(year));
+  if (classNameFilter !== "all") query.set("className", classNameFilter);
   const endpoint = `/api/students/outstanding${query.toString() ? `?${query.toString()}` : ""}`;
 
   const { data, isLoading, error } = useSWR<OutstandingClasswiseDTO>(endpoint);
-  const subtitle =
-    data?.month && data.year
-      ? monthLabel(data.month, data.year)
-      : month && year
-        ? monthLabel(month, year)
-        : "All months";
+  const subtitle = useMemo(
+    () =>
+      data?.month && data.year
+        ? monthLabel(data.month, data.year)
+        : month && year
+          ? monthLabel(month, year)
+          : "All months",
+    [data?.month, data?.year, month, year]
+  );
 
   const exportCsv = () => {
     if (!data) return;
@@ -100,6 +107,27 @@ export const OutstandingClasswise = ({ month, year, title }: Props) => {
             <DownloadCloud className="h-4 w-4" />
             Export CSV
           </button>
+          <select
+            value={classNameFilter}
+            onChange={(event) =>
+              setClassNameFilter(
+                event.target.value as "all" | (typeof CLASS_NAMES)[number]
+              )
+            }
+            className="rounded-full border px-3 py-2 text-xs font-semibold"
+            style={{
+              borderColor: "var(--border)",
+              backgroundColor: "var(--card-muted)",
+              color: "var(--text-primary)",
+            }}
+          >
+            <option value="all">All classes</option>
+            {CLASS_NAMES.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
           <span
             className="rounded-2xl p-3"
             style={{ backgroundColor: "var(--accent-muted)", color: "var(--accent)" }}

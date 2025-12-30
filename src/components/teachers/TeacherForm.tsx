@@ -23,6 +23,18 @@ interface Props {
   onSuccess?: () => void;
 }
 
+const buildDefaultValues = (): FormValues =>
+  ({
+    name: "",
+    cnic: "",
+    qualification: "",
+    experience: "",
+    salary: 0,
+    subjects: "",
+    status: "active",
+    joinedOn: new Date().toISOString().split("T")[0],
+  } as FormValues);
+
 export const TeacherForm = ({
   mode,
   teacherId,
@@ -36,16 +48,14 @@ export const TeacherForm = ({
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(teacherFormSchema),
-    defaultValues: {
-      name: "",
-      cnic: "",
-      qualification: "",
-      experience: "",
-      salary: 0,
-      subjects: "",
-      status: "active",
-    } as FormValues,
+    defaultValues: buildDefaultValues(),
   });
+
+  useEffect(() => {
+    if (mode === "create" && !initialData) {
+      reset(buildDefaultValues());
+    }
+  }, [initialData, mode, reset]);
 
   useEffect(() => {
     if (initialData) {
@@ -57,6 +67,53 @@ export const TeacherForm = ({
       } as FormValues);
     }
   }, [initialData, reset]);
+
+  const showNextActions = (message: string) => {
+    toast.custom(
+      (t) => (
+        <div
+          className="w-full max-w-xs rounded-xl border p-3 text-sm shadow-lg"
+          style={{
+            backgroundColor: "var(--card)",
+            borderColor: "var(--border)",
+            color: "var(--text-primary)",
+            boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
+          }}
+        >
+          <p className="font-semibold">{message}</p>
+          <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+            Form cleared. Choose your next step.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              className="rounded-lg px-3 py-1 text-xs font-semibold text-white shadow-sm transition"
+              style={{ backgroundColor: "var(--accent)" }}
+              onClick={() => {
+                reset(buildDefaultValues());
+                toast.dismiss(t.id);
+              }}
+            >
+              Add another
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border px-3 py-1 text-xs font-semibold transition"
+              onClick={() => toast.dismiss(t.id)}
+              style={{
+                borderColor: "var(--border)",
+                color: "var(--text-primary)",
+                backgroundColor: "var(--card-muted)",
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ),
+      { duration: 5000 }
+    );
+  };
 
   const onSubmit = async (values: FormValues) => {
     const payload = {
@@ -93,8 +150,9 @@ export const TeacherForm = ({
     try {
       await promise;
       onSuccess?.();
-      if (mode === "create") {
-        reset();
+      reset(buildDefaultValues());
+      if (mode === "edit") {
+        showNextActions("Teacher updated");
       }
     } catch {
       //

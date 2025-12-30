@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { Loader2 } from "lucide-react";
 import { studentSchema } from "@/lib/validators/student";
 import { z } from "zod";
-import { CLASS_GROUPS } from "@/types/enums";
+import { CLASS_GROUPS, CLASS_NAMES } from "@/types/enums";
 
 const studentFormSchema = studentSchema.extend({
   dob: z.string(),
@@ -24,6 +24,26 @@ interface Props {
   onSuccess?: () => void;
 }
 
+const buildDefaultValues = (): FormValues =>
+  ({
+    admissionNo: "",
+    name: "",
+    classGroup: "Science",
+    className: "",
+    dob: new Date().toISOString().split("T")[0],
+    cellNo: "",
+    bFormNo: "",
+    fatherName: "",
+    fatherCnic: "",
+    fatherCellNo: "",
+    admissionFee: 0,
+    monthlyFee: 0,
+    scholarshipPercent: 0,
+    admissionDate: new Date().toISOString().split("T")[0],
+    status: "active",
+    notes: "",
+  } as unknown as FormValues);
+
 export const StudentForm = ({
   mode,
   initialData,
@@ -38,24 +58,16 @@ export const StudentForm = ({
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(studentFormSchema),
-    defaultValues: {
-      admissionNo: "",
-      name: "",
-      classGroup: "Science",
-      className: "",
-      dob: new Date().toISOString().split("T")[0],
-      cellNo: "",
-      bFormNo: "",
-      fatherName: "",
-      fatherCnic: "",
-      fatherCellNo: "",
-      admissionFee: 0,
-      monthlyFee: 0,
-      admissionDate: new Date().toISOString().split("T")[0],
-      status: "active",
-      notes: "",
-    } as unknown as FormValues,
+    defaultValues: buildDefaultValues(),
   });
+
+  useEffect(() => {
+    if (mode === "create" && !initialData) {
+      reset(buildDefaultValues());
+    }
+  }, [initialData, mode, reset]);
+
+  const classOptions = useMemo(() => CLASS_NAMES, []);
 
   useEffect(() => {
     if (initialData) {
@@ -72,15 +84,64 @@ export const StudentForm = ({
               .split("T")[0]
           : new Date().toISOString().split("T")[0],
         className: initialData.className ?? "",
+        scholarshipPercent: initialData.scholarshipPercent ?? 0,
       } as FormValues);
     }
   }, [initialData, reset]);
+
+  const showNextActions = (message: string) => {
+    toast.custom(
+      (t) => (
+        <div
+          className="w-full max-w-xs rounded-xl border p-3 text-sm shadow-lg"
+          style={{
+            backgroundColor: "var(--card)",
+            borderColor: "var(--border)",
+            color: "var(--text-primary)",
+            boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
+          }}
+        >
+          <p className="font-semibold">{message}</p>
+          <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+            Form cleared. Choose your next step.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              className="rounded-lg px-3 py-1 text-xs font-semibold text-white shadow-sm transition"
+              style={{ backgroundColor: "var(--accent)" }}
+              onClick={() => {
+                reset(buildDefaultValues());
+                toast.dismiss(t.id);
+              }}
+            >
+              Add another
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border px-3 py-1 text-xs font-semibold transition"
+              onClick={() => toast.dismiss(t.id)}
+              style={{
+                borderColor: "var(--border)",
+                color: "var(--text-primary)",
+                backgroundColor: "var(--card-muted)",
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ),
+      { duration: 5000 }
+    );
+  };
 
   const onSubmit = async (values: FormValues) => {
     const payload = {
       ...values,
       admissionFee: Number(values.admissionFee),
       monthlyFee: Number(values.monthlyFee),
+      scholarshipPercent: Number(values.scholarshipPercent ?? 0),
     };
 
     const endpoint =
@@ -113,8 +174,9 @@ export const StudentForm = ({
     try {
       await promise;
       onSuccess?.();
-      if (mode === "create") {
-        reset();
+      reset(buildDefaultValues());
+      if (mode === "edit") {
+        showNextActions("Student updated");
       }
     } catch {
       // handled
@@ -185,7 +247,7 @@ export const StudentForm = ({
         </div>
         <div>
           <label style={{ color: "var(--form-label-text)" }}>Class / Section</label>
-          <input
+          <select
             className="mt-1 w-full rounded-xl border px-4 py-2 transition-colors"
             style={{
               borderColor: "var(--form-input-border)",
@@ -195,9 +257,15 @@ export const StudentForm = ({
             onFocus={(e) => {
               e.currentTarget.style.borderColor = "var(--accent)";
             }}
-            placeholder="e.g. 2nd Year - A"
             {...register("className")}
-          />
+          >
+            <option value="">Select class</option>
+            {classOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
           {errors.className && (
             <p className="text-xs text-rose-400">{errors.className.message}</p>
           )}
@@ -345,6 +413,30 @@ export const StudentForm = ({
             }}
             {...register("monthlyFee", { valueAsNumber: true })}
           />
+        </div>
+        <div>
+          <label style={{ color: "var(--form-label-text)" }}>
+            Scholarship (%)
+          </label>
+          <input
+            type="number"
+            className="mt-1 w-full rounded-xl border px-4 py-2 transition-colors"
+            style={{
+              borderColor: "var(--form-input-border)",
+              backgroundColor: "var(--form-input-bg)",
+              color: "var(--form-input-text)",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent)";
+            }}
+            {...register("scholarshipPercent", { valueAsNumber: true })}
+            placeholder="0-100%"
+            min={0}
+            max={100}
+          />
+          <p className="mt-1 text-xs" style={{ color: "var(--text-secondary-muted)" }}>
+            Set 0 to remove later. Discount applies on fee slips automatically.
+          </p>
         </div>
       </div>
 

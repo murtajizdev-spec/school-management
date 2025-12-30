@@ -100,10 +100,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Student not found" }, { status: 404 });
   }
 
+  const scholarshipPercentRaw =
+    parsed.data.scholarshipPercent ?? Number(student.scholarshipPercent ?? 0);
+  const scholarshipPercent = Math.min(Math.max(scholarshipPercentRaw, 0), 100);
+  const scholarshipAmountRaw = parsed.data.scholarshipAmount;
+  const computedScholarshipAmount = Math.max(
+    ((student.monthlyFee ?? 0) * scholarshipPercent) / 100,
+    0
+  );
+  const scholarshipAmount =
+    scholarshipAmountRaw !== undefined
+      ? Math.max(Math.min(scholarshipAmountRaw, student.monthlyFee), 0)
+      : computedScholarshipAmount;
+
+  const amountDue = Math.max(student.monthlyFee - scholarshipAmount, 0);
+
+  const existingRecord = await FeeRecordModel.findOne({
+    student: parsed.data.studentId,
+    month: parsed.data.month,
+    year: parsed.data.year,
+  });
+
+  const newAmountPaid = Math.min(
+    amountDue,
+    (existingRecord?.amountPaid ?? 0) + parsed.data.amountPaid
+  );
+
   const status =
-    parsed.data.amountPaid >= parsed.data.amountDue
+    newAmountPaid >= amountDue
       ? "paid"
-      : parsed.data.amountPaid > 0
+      : newAmountPaid > 0
         ? "partial"
         : "pending";
 
@@ -117,9 +143,11 @@ export async function POST(request: Request) {
     },
     {
       $set: {
-        amountDue: parsed.data.amountDue,
-        amountPaid: parsed.data.amountPaid,
+        amountDue,
+        amountPaid: newAmountPaid,
         admissionFeePortion: parsed.data.admissionFeePortion,
+        scholarshipPercent: scholarshipPercent,
+        scholarshipAmount,
         paidOn,
         method: parsed.data.method,
         remarks: parsed.data.remarks,

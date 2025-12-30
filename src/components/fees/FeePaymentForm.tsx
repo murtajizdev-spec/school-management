@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
@@ -17,29 +17,49 @@ interface Props {
   onSuccess: (record: FeeRecordDTO) => void;
 }
 
+const buildDefaults = (): FormValues =>
+  ({
+    studentId: "",
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+    amountDue: 0,
+    amountPaid: 0,
+    method: "cash",
+    admissionFeePortion: 0,
+    scholarshipPercent: 0,
+    scholarshipAmount: 0,
+    remarks: "",
+  } as FormValues);
+
 export const FeePaymentForm = ({ students, onSuccess }: Props) => {
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(feePaymentSchema),
-    defaultValues: {
-      studentId: "",
-      month: new Date().getMonth() + 1,
-      year: new Date().getFullYear(),
-      amountDue: 0,
-      amountPaid: 0,
-      method: "cash",
-      admissionFeePortion: 0,
-      remarks: "",
-    } as FormValues,
+    defaultValues: buildDefaults(),
   });
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const selectedStudentId = watch("studentId");
+  const scholarshipPercent = watch("scholarshipPercent") ?? 0;
+  const scholarshipAmount = watch("scholarshipAmount") ?? 0;
+  const month = watch("month");
+  const year = watch("year");
+
+  const [existingRecord, setExistingRecord] = useState<FeeRecordDTO | null>(null);
+  const [existingLoading, setExistingLoading] = useState(false);
+  const outstanding = useMemo(
+    () =>
+      existingRecord
+        ? Math.max(existingRecord.amountDue - existingRecord.amountPaid, 0)
+        : null,
+    [existingRecord]
+  );
 
   useEffect(() => {
     if (!selectedStudentId) return;
@@ -47,12 +67,76 @@ export const FeePaymentForm = ({ students, onSuccess }: Props) => {
       (item) => item._id === selectedStudentId
     );
     if (student) {
-      setValue("amountDue", student.monthlyFee);
-      setValue("amountPaid", student.monthlyFee);
+      const percent = Math.min(Math.max(student.scholarshipPercent ?? 0, 0), 100);
+      const scholarshipAmt = Math.max((student.monthlyFee * percent) / 100, 0);
+      const netDue = Math.max(student.monthlyFee - scholarshipAmt, 0);
+      setValue("scholarshipPercent", percent);
+      setValue("scholarshipAmount", scholarshipAmt);
+      setValue("amountDue", netDue);
+      setValue("amountPaid", netDue);
     }
   }, [selectedStudentId, setValue, students]);
 
+  useEffect(() => {
+    const fetchExisting = async () => {
+      if (!selectedStudentId || !month || !year) {
+        setExistingRecord(null);
+        return;
+      }
+      setExistingLoading(true);
+      try {
+        const res = await fetch(
+          `/api/fees?studentId=${selectedStudentId}&month=${month}&year=${year}`
+        );
+        if (!res.ok) {
+          setExistingRecord(null);
+          return;
+        }
+        const data: FeeRecordDTO[] = await res.json();
+        const record = data?.[0];
+        if (!record) {
+          setExistingRecord(null);
+          return;
+        }
+        setExistingRecord(record);
+        const outstanding = Math.max(record.amountDue - record.amountPaid, 0);
+        const fallbackPercent = record.student?.scholarshipPercent ?? 0;
+        const percent = record.scholarshipPercent ?? fallbackPercent;
+        const percentClamped = Math.min(Math.max(percent, 0), 100);
+        const baseMonthly = record.student?.monthlyFee ?? record.amountDue;
+        const scholarshipAmt =
+          record.scholarshipAmount ??
+          Math.max((baseMonthly * percentClamped) / 100, 0);
+    setValue("amountDue", record.amountDue);
+    setValue("amountPaid", outstanding > 0 ? outstanding : 0);
+        setValue("scholarshipPercent", percentClamped);
+        setValue("scholarshipAmount", scholarshipAmt);
+      } catch {
+        setExistingRecord(null);
+      } finally {
+        setExistingLoading(false);
+      }
+    };
+    fetchExisting();
+  }, [month, year, selectedStudentId, setValue]);
+
+  useEffect(() => {
+    const student = students.find((item) => item._id === selectedStudentId);
+    if (!student) return;
+    const percent = Math.min(Math.max(scholarshipPercent || 0, 0), 100);
+    const scholarshipAmt = Math.max((student.monthlyFee * percent) / 100, 0);
+    const netDue = Math.max(student.monthlyFee - scholarshipAmt, 0);
+    setValue("scholarshipAmount", scholarshipAmt);
+    setValue("amountDue", netDue);
+    setValue("amountPaid", netDue);
+  }, [scholarshipPercent, selectedStudentId, setValue, students]);
+
   const onSubmit = async (values: FormValues) => {
+    if (outstanding !== null && outstanding <= 0) {
+      toast("Fee already paid for this month/year");
+      return;
+    }
+
     const payload = { ...values };
     const promise = fetch("/api/fees", {
       method: "POST",
@@ -75,6 +159,9 @@ export const FeePaymentForm = ({ students, onSuccess }: Props) => {
     try {
       const record = await promise;
       onSuccess(record);
+      reset(buildDefaults());
+      setExistingRecord(null);
+      setValue("studentId", "");
     } catch {
       //
     }
@@ -82,6 +169,33 @@ export const FeePaymentForm = ({ students, onSuccess }: Props) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-sm">
+      {existingRecord && (
+        <div
+          className="rounded-xl border px-4 py-3 text-xs"
+          style={{
+            borderColor: "var(--border)",
+            backgroundColor: "var(--card-muted)",
+            color: "var(--text-primary)",
+          }}
+        >
+          <p className="font-semibold" style={{ color: "var(--text-primary)" }}>
+            Already paid for {month}/{year}: {existingRecord.status}
+          </p>
+          <p style={{ color: "var(--text-secondary-muted)" }}>
+            Slip {existingRecord.slipNumber} · Paid {existingRecord.amountPaid} /{" "}
+            {existingRecord.amountDue}{" "}
+            {existingRecord.paidOn ? `on ${new Date(existingRecord.paidOn).toDateString()}` : ""}
+          </p>
+          <p style={{ color: "var(--text-secondary-muted)" }}>
+            Outstanding: {Math.max(existingRecord.amountDue - existingRecord.amountPaid, 0)}
+          </p>
+        </div>
+      )}
+      {existingLoading && (
+        <p className="text-xs" style={{ color: "var(--text-secondary-muted)" }}>
+          Checking existing payment...
+        </p>
+      )}
       <SearchableStudentSelect
         students={students}
         value={selectedStudentId || ""}
@@ -171,6 +285,46 @@ export const FeePaymentForm = ({ students, onSuccess }: Props) => {
               e.currentTarget.style.borderColor = "var(--accent)";
             }}
             {...register("admissionFeePortion", { valueAsNumber: true })}
+          />
+        </div>
+        <div>
+          <label style={{ color: "var(--form-label-text)" }}>
+            Scholarship (%)
+          </label>
+          <input
+            type="number"
+            className="mt-1 w-full rounded-xl border px-4 py-2 transition-colors"
+            style={{
+              borderColor: "var(--form-input-border)",
+              backgroundColor: "var(--form-input-bg)",
+              color: "var(--form-input-text)",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent)";
+            }}
+            {...register("scholarshipPercent", { valueAsNumber: true })}
+            min={0}
+            max={100}
+            placeholder="0-100%"
+          />
+          <p className="mt-1 text-xs" style={{ color: "var(--text-secondary-muted)" }}>
+            Prefilled from admission form. Set to 0 if scholarship removed.
+          </p>
+        </div>
+        <div>
+          <label style={{ color: "var(--form-label-text)" }}>
+            Scholarship amount (auto)
+          </label>
+          <input
+            type="number"
+            readOnly
+            className="mt-1 w-full rounded-xl border px-4 py-2 transition-colors"
+            style={{
+              borderColor: "var(--form-input-border)",
+              backgroundColor: "var(--form-input-bg)",
+              color: "var(--form-input-text)",
+            }}
+            value={Number(scholarshipAmount) || 0}
           />
         </div>
       </div>

@@ -14,6 +14,10 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
+  const typeParam = (searchParams.get("type") ?? "all").toLowerCase();
+  const className = searchParams.get("className");
+  const onlyStudents = typeParam === "students";
+  const onlyTeachers = typeParam === "teachers";
 
   if (!query) {
     return NextResponse.json(
@@ -27,42 +31,47 @@ export async function GET(request: Request) {
   const regex = { $regex: query, $options: "i" };
 
   const [students, teachers] = await Promise.all([
-    StudentModel.find(
-      {
-        $or: [
-          { name: regex },
-          { admissionNo: regex },
-          { fatherName: regex },
-          { fatherCnic: regex },
-        ],
-      },
-      {
-        admissionNo: 1,
-        name: 1,
-        classGroup: 1,
-        className: 1,
-        status: 1,
-        monthlyFee: 1,
-        admissionFee: 1,
-        lastFeePaidOn: 1,
-      }
-    ).lean(),
-    TeacherModel.find(
-      {
-        $or: [{ name: regex }, { cnic: regex }, { subjects: regex }],
-      },
-      {
-        name: 1,
-        cnic: 1,
-        qualification: 1,
-        experience: 1,
-        salary: 1,
-        subjects: 1,
-        status: 1,
-        joinedOn: 1,
-        leftOn: 1,
-      }
-    ).lean(),
+    onlyTeachers
+      ? []
+      : StudentModel.find(
+          {
+            $or: [
+              { name: regex },
+              { admissionNo: regex },
+              { fatherName: regex },
+              { fatherCnic: regex },
+            ],
+            ...(className ? { className } : {}),
+          },
+          {
+            admissionNo: 1,
+            name: 1,
+            classGroup: 1,
+            className: 1,
+            status: 1,
+            monthlyFee: 1,
+            admissionFee: 1,
+            lastFeePaidOn: 1,
+          }
+        ).lean(),
+    onlyStudents
+      ? []
+      : TeacherModel.find(
+          {
+            $or: [{ name: regex }, { cnic: regex }, { subjects: regex }],
+          },
+          {
+            name: 1,
+            cnic: 1,
+            qualification: 1,
+            experience: 1,
+            salary: 1,
+            subjects: 1,
+            status: 1,
+            joinedOn: 1,
+            leftOn: 1,
+          }
+        ).lean(),
   ]);
 
   const studentIds = students.map((s: any) => s._id);

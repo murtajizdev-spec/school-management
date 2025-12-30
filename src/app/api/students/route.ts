@@ -18,6 +18,7 @@ export async function GET(request: Request) {
   const search = searchParams.get("search");
   const status = searchParams.get("status");
   const classGroup = searchParams.get("classGroup");
+  const className = searchParams.get("className");
   const limit = searchParams.get("limit")
     ? Number(searchParams.get("limit"))
     : undefined;
@@ -35,6 +36,9 @@ export async function GET(request: Request) {
 
   if (classGroup) {
     query.classGroup = classGroup;
+  }
+  if (className) {
+    query.className = className;
   }
 
   let cursor = StudentModel.find(query).sort({ createdAt: -1 });

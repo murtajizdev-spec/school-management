@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
-import { ClassGroup, StudentStatus } from "@/types/enums";
+import { ClassGroup, StudentStatus, CLASS_NAMES } from "@/types/enums";
 
 export interface IStudent extends Document {
   admissionNo: string;
@@ -14,6 +14,7 @@ export interface IStudent extends Document {
   fatherCellNo: string;
   admissionFee: number;
   monthlyFee: number;
+  scholarshipPercent?: number;
   admissionDate: Date;
   status: StudentStatus;
   notes?: string;
@@ -31,7 +32,7 @@ const StudentSchema = new Schema<IStudent>(
       enum: ["Arts", "Science", "ICS", "Pre-Engineering", "Pre-Medical"],
       required: true,
     },
-    className: { type: String, required: true },
+    className: { type: String, required: true, enum: CLASS_NAMES },
     dob: { type: Date, required: true },
     cellNo: { type: String, required: true },
     bFormNo: { type: String, required: true },
@@ -40,6 +41,7 @@ const StudentSchema = new Schema<IStudent>(
     fatherCellNo: { type: String, required: true },
     admissionFee: { type: Number, required: true },
     monthlyFee: { type: Number, required: true },
+    scholarshipPercent: { type: Number, default: 0, min: 0, max: 100 },
     admissionDate: { type: Date, default: () => new Date() },
     status: { type: String, enum: ["active", "left"], default: "active" },
     notes: { type: String },

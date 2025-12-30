@@ -8,6 +8,8 @@ export const feePaymentSchema = z.object({
   amountDue: z.number().nonnegative(),
   amountPaid: z.number().nonnegative(),
   admissionFeePortion: z.number().nonnegative().optional(),
+  scholarshipPercent: z.number().min(0).max(100).optional(),
+  scholarshipAmount: z.number().nonnegative().optional(),
   method: z.enum(PAYMENT_METHODS).default("cash"),
   remarks: z.string().optional(),
 });

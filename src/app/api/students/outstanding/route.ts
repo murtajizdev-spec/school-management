@@ -13,6 +13,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const month = searchParams.get("month") ? Number(searchParams.get("month")) : undefined;
   const year = searchParams.get("year") ? Number(searchParams.get("year")) : undefined;
+  const className = searchParams.get("className") ?? undefined;
+  const classGroup = searchParams.get("classGroup") ?? undefined;
 
   await connectDB();
 
@@ -38,6 +40,8 @@ export async function GET(request: Request) {
     if (!student || typeof student !== "object" || student.status !== "active") {
       continue;
     }
+    if (className && student.className !== className) continue;
+    if (classGroup && student.classGroup !== classGroup) continue;
     const outstanding = Math.max(record.amountDue - record.amountPaid, 0);
     if (outstanding <= 0) continue;
 

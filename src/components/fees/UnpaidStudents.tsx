@@ -89,27 +89,66 @@ export const UnpaidStudents = ({ month, year, title, scrollable = true, maxHeigh
     if (!data) return;
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
-    const rows = data.unpaid
+
+    // Group by class (classGroup + className)
+    const groups = new Map<
+      string,
+      { classGroup: string; className: string; total: number; rows: string[] }
+    >();
+
+    data.unpaid.forEach((student) => {
+      const key = `${student.classGroup}-${student.className}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          classGroup: student.classGroup,
+          className: student.className,
+          total: 0,
+          rows: [],
+        });
+      }
+      const group = groups.get(key)!;
+      group.total += student.outstanding;
+      group.rows.push(`<tr>
+        <td>${student.name}</td>
+        <td>${student.admissionNo}</td>
+        <td style="text-align:right">${formatCurrency(student.outstanding)}</td>
+        <td style="text-align:right">${formatCurrency(student.monthlyFee)}</td>
+      </tr>`);
+    });
+
+    const groupsHtml = Array.from(groups.values())
+      .sort((a, b) => a.className.localeCompare(b.className))
       .map(
-        (student) =>
-          `<tr>
-            <td>${student.name}</td>
-            <td>${student.admissionNo}</td>
-            <td>${student.classGroup} - ${student.className}</td>
-            <td>${monthLabel(data.month, data.year)}</td>
-            <td style="text-align:right">${formatCurrency(student.outstanding)}</td>
-            <td style="text-align:right">${formatCurrency(student.monthlyFee)}</td>
-          </tr>`
+        (group) => `
+        <h2 style="margin: 16px 0 6px; font-size: 14px;">
+          ${group.classGroup} - ${group.className} (Outstanding: ${formatCurrency(group.total)})
+        </h2>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 36%;">Name</th>
+              <th style="width: 18%;">Admission #</th>
+              <th style="width: 23%; text-align:right;">Outstanding</th>
+              <th style="width: 23%; text-align:right;">Monthly fee</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${group.rows.join("")}
+          </tbody>
+        </table>
+      `
       )
       .join("");
+
     printWindow.document.write(`
       <html>
         <head>
-          <title>Outstanding students</title>
+          <title>Outstanding students (class-wise)</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 16px; }
-            h1 { font-size: 18px; margin-bottom: 8px; }
-            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            h1 { font-size: 18px; margin-bottom: 4px; }
+            h2 { font-size: 14px; margin: 14px 0 6px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px; }
             th, td { border: 1px solid #ccc; padding: 6px 8px; }
             th { background: #f5f5f5; text-align: left; }
           </style>
@@ -117,19 +156,7 @@ export const UnpaidStudents = ({ month, year, title, scrollable = true, maxHeigh
         <body>
           <h1>Outstanding students (${monthLabel(data.month, data.year)})</h1>
           <p>Total outstanding: ${formatCurrency(data.summary.unpaidAmount)} | Students: ${data.summary.unpaidCount}</p>
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Admission #</th>
-                <th>Class</th>
-                <th>Month</th>
-                <th>Outstanding</th>
-                <th>Monthly fee</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
+          ${groupsHtml}
         </body>
       </html>
     `);

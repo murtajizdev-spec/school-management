@@ -11,9 +11,25 @@ interface Props {
   onClose: () => void;
 }
 
+const deriveScholarship = (record: FeeRecordDTO) => {
+  const percent =
+    record.scholarshipPercent ??
+    record.student?.scholarshipPercent ??
+    0;
+  const baseMonthly = record.student?.monthlyFee ?? record.amountDue;
+  const amount =
+    record.scholarshipAmount ??
+    Math.max((baseMonthly * Math.min(Math.max(percent, 0), 100)) / 100, 0);
+  return {
+    percent: Math.min(Math.max(percent, 0), 100),
+    amount,
+  };
+};
+
 const buildPrintableFeeSlip = (record: FeeRecordDTO, paidOn?: Date | null) => {
   const today = format(new Date(), "PPP");
   const paidOnText = paidOn ? format(paidOn, "PPPpp") : "Not paid yet";
+  const { percent: scholarshipPercent, amount: scholarshipAmount } = deriveScholarship(record);
   return `<!DOCTYPE html>
   <html>
     <head>
@@ -72,6 +88,14 @@ const buildPrintableFeeSlip = (record: FeeRecordDTO, paidOn?: Date | null) => {
               <span>Amount due</span>
               <strong>${formatCurrency(record.amountDue)}</strong>
             </div>
+            ${
+              scholarshipAmount > 0
+                ? `<div class="amount-row" style="font-size:13px; color:#64748b;">
+                    <span>Scholarship (${scholarshipPercent}%)</span>
+                    <span>- ${formatCurrency(scholarshipAmount)}</span>
+                  </div>`
+                : ""
+            }
             <div class="amount-row">
               <span>Amount paid</span>
               <strong style="color:#059669;">${formatCurrency(record.amountPaid)}</strong>
@@ -95,6 +119,10 @@ export const FeeSlipPreview = ({ record, onClose }: Props) => {
   const paidOn = useMemo(
     () => (record.paidOn ? new Date(record.paidOn) : null),
     [record.paidOn]
+  );
+  const { percent: scholarshipPercent, amount: scholarshipAmount } = useMemo(
+    () => deriveScholarship(record),
+    [record]
   );
   const printable = useMemo(
     () => buildPrintableFeeSlip(record, paidOn),
@@ -202,6 +230,12 @@ export const FeeSlipPreview = ({ record, onClose }: Props) => {
                     {formatCurrency(record.amountDue)}
                   </span>
                 </div>
+                {scholarshipAmount > 0 && (
+                  <div className="flex justify-between text-sm text-slate-500">
+                    <span>Scholarship ({scholarshipPercent}%)</span>
+                    <span>- {formatCurrency(scholarshipAmount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Amount paid</span>
                   <span className="font-semibold text-emerald-600">

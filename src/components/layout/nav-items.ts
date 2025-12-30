@@ -7,6 +7,7 @@ import {
   TrendingUp,
   Users,
   Wallet,
+  Search,
 } from "lucide-react";
 
 export const navItems = [
@@ -18,5 +19,6 @@ export const navItems = [
   { label: "Performance", href: "/performance/current", icon: TrendingUp },
   { label: "Archive", href: "/performance/archive", icon: LineChart },
   { label: "Outstanding", href: "/outstanding", icon: AlertTriangle },
+  { label: "Search", href: "/search", icon: Search },
 ];
 

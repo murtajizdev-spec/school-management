@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import { motion } from "framer-motion";
 import {
@@ -27,6 +27,58 @@ export const TeacherManagementPanel = () => {
   const [editingTeacher, setEditingTeacher] = useState<TeacherDTO | undefined>();
   const [slip, setSlip] = useState<SalaryPaymentDTO | undefined>();
   const { refreshDashboard } = useDashboardRefresh();
+  const formRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (editingTeacher && formRef.current) {
+      formRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      toast.custom(
+        (t) => (
+          <div
+            className="w-full max-w-xs rounded-xl border p-3 text-sm shadow-lg"
+            style={{
+              backgroundColor: "var(--card)",
+              borderColor: "var(--border)",
+              color: "var(--text-primary)",
+            }}
+          >
+            <p className="font-semibold">Editing teacher</p>
+            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+              {editingTeacher.name} · {editingTeacher.cnic}
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                className="rounded-lg px-3 py-1 text-xs font-semibold text-white shadow-sm transition"
+                style={{ backgroundColor: "var(--accent)" }}
+                onClick={() => {
+                  formRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                  toast.dismiss(t.id);
+                }}
+              >
+                Jump to form
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border px-3 py-1 text-xs font-semibold transition"
+                style={{
+                  borderColor: "var(--border)",
+                  color: "var(--text-primary)",
+                }}
+                onClick={() => toast.dismiss(t.id)}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        ),
+        { duration: 4500 }
+      );
+    }
+  }, [editingTeacher]);
 
   const filteredTeachers = useMemo(() => {
     if (!teachers) return [];
@@ -155,6 +207,7 @@ export const TeacherManagementPanel = () => {
             backgroundColor: "var(--card)",
             color: "var(--text-primary)",
           }}
+          ref={formRef}
         >
           <div className="flex items-center gap-3">
             <div

@@ -19,6 +19,7 @@ export interface StudentDTO {
   fatherCellNo: string;
   admissionFee: number;
   monthlyFee: number;
+  scholarshipPercent?: number;
   admissionDate: string;
   status: StudentStatus;
   notes?: string;
@@ -33,6 +34,8 @@ export interface FeeRecordDTO {
   amountDue: number;
   amountPaid: number;
   admissionFeePortion?: number;
+  scholarshipPercent?: number;
+  scholarshipAmount?: number;
   paidOn?: string;
   method: PaymentMethod;
   slipNumber: string;

@@ -10,6 +10,7 @@ import { formatCurrency, monthLabel } from "@/lib/utils";
 import { AdmissionFormPreview } from "@/components/students/AdmissionFormPreview";
 import { FeeSlipPreview } from "@/components/fees/FeeSlipPreview";
 import { SalarySlipPreview } from "@/components/teachers/SalarySlipPreview";
+import { CLASS_NAMES } from "@/types/enums";
 
 type StudentResult = {
   type: "student";
@@ -47,31 +48,73 @@ export default function SearchPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const searchTerm = (searchParams.get("q") ?? "").trim();
+  const searchTypeParam = (searchParams.get("type") ?? "all").toLowerCase();
+  const classParam = searchParams.get("class") ?? "all";
 
   const [query, setQuery] = useState(searchTerm);
+  const [searchType, setSearchType] = useState<"all" | "students" | "teachers">(
+    searchTypeParam === "students" || searchTypeParam === "teachers" ? searchTypeParam : "all"
+  );
+  const [classFilter, setClassFilter] = useState<"all" | (typeof CLASS_NAMES)[number]>(
+    CLASS_NAMES.includes(classParam as any)
+      ? (classParam as (typeof CLASS_NAMES)[number])
+      : "all"
+  );
   const [admissionPreview, setAdmissionPreview] = useState<StudentDTO | null>(null);
   const [feeSlipPreview, setFeeSlipPreview] = useState<FeeRecordDTO | null>(null);
   const [salarySlipPreview, setSalarySlipPreview] = useState<SalaryPaymentDTO | null>(null);
 
   useEffect(() => {
     setQuery(searchTerm);
-  }, [searchTerm]);
+    const type = (searchParams.get("type") ?? "all").toLowerCase();
+    setSearchType(
+      type === "students" || type === "teachers" ? type : "all"
+    );
+    const classFromParams = searchParams.get("class") ?? "all";
+    if (CLASS_NAMES.includes(classFromParams as any)) {
+      setClassFilter(classFromParams as (typeof CLASS_NAMES)[number]);
+    } else {
+      setClassFilter("all");
+    }
+  }, [searchParams, searchTerm]);
 
   const { data, error, isLoading } = useSWR<SearchResponse>(
-    () => (searchTerm ? `/api/search?q=${encodeURIComponent(searchTerm)}` : null),
+    () => {
+      if (!searchTerm) return null;
+      const params = new URLSearchParams();
+      params.set("q", searchTerm);
+      if (searchType !== "all") params.set("type", searchType);
+      if (searchType !== "teachers" && classFilter !== "all") {
+        params.set("className", classFilter);
+      }
+      return `/api/search?${params.toString()}`;
+    },
     fetcher,
     { revalidateOnFocus: false }
   );
 
+  const filteredStudents = useMemo(() => {
+    const list = data?.students ?? [];
+    if (classFilter === "all") return list;
+    return list.filter((entry) => entry.student.className === classFilter);
+  }, [data?.students, classFilter]);
+
   const hasResults = useMemo(
-    () => (data?.students?.length ?? 0) + (data?.teachers?.length ?? 0) > 0,
-    [data]
+    () => (filteredStudents.length ?? 0) + (data?.teachers?.length ?? 0) > 0,
+    [data?.teachers?.length, filteredStudents.length]
   );
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     const next = query.trim();
-    router.replace(`/search${next ? `?q=${encodeURIComponent(next)}` : ""}`);
+    const params = new URLSearchParams();
+    if (next) params.set("q", next);
+    if (searchType !== "all") params.set("type", searchType);
+    if (searchType !== "teachers" && classFilter !== "all") {
+      params.set("class", classFilter);
+    }
+    const qs = params.toString();
+    router.replace(`/search${qs ? `?${qs}` : ""}`);
   };
 
   return (
@@ -98,7 +141,7 @@ export default function SearchPage() {
         className="rounded-3xl border p-6 shadow-xl"
         style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}
       >
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3 md:flex-row">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="relative flex-1">
             <Search
               className="pointer-events-none absolute left-3 top-3 h-4 w-4"
@@ -116,16 +159,59 @@ export default function SearchPage() {
               }}
             />
           </div>
-          <button
-            type="submit"
-            className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold"
-            style={{
-              backgroundColor: "var(--accent)",
-              color: "#fff",
-            }}
-          >
-            Search
-          </button>
+          <div className="flex flex-col items-stretch gap-2 md:flex-row md:items-center">
+            <div className="inline-flex overflow-hidden rounded-full border" style={{ borderColor: "var(--border)" }}>
+              {(["all", "students", "teachers"] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setSearchType(type)}
+                  className="px-3 py-2 text-xs font-semibold transition"
+                  style={{
+                    backgroundColor:
+                      searchType === type ? "var(--accent-muted)" : "transparent",
+                    color:
+                      searchType === type ? "var(--text-primary)" : "var(--text-secondary)",
+                  }}
+                >
+                  {type === "all" ? "All" : type === "students" ? "Students" : "Teachers"}
+                </button>
+              ))}
+            </div>
+            {searchType !== "teachers" && (
+              <select
+                value={classFilter}
+                onChange={(event) =>
+                  setClassFilter(
+                    event.target.value as "all" | (typeof CLASS_NAMES)[number]
+                  )
+                }
+                className="rounded-full border px-3 py-2 text-xs font-semibold"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--card-muted)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                <option value="all">All classes</option>
+                {CLASS_NAMES.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold"
+              style={{
+                backgroundColor: "var(--accent)",
+                color: "#fff",
+              }}
+            >
+              Search
+            </button>
+          </div>
         </form>
 
         {isLoading && (
@@ -151,13 +237,13 @@ export default function SearchPage() {
         )}
       </div>
 
-      {data?.students?.length ? (
+      {filteredStudents.length ? (
         <section className="space-y-3">
           <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
             Students
           </h2>
           <div className="grid gap-4 lg:grid-cols-2">
-            {data.students.map((entry) => {
+            {filteredStudents.map((entry) => {
               const history = Array.isArray(entry.feeHistory) ? entry.feeHistory : [];
               const totalCollected = history.reduce(
                 (sum, r) => sum + (r?.amountPaid ?? 0),
