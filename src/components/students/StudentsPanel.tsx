@@ -34,6 +34,13 @@ export const StudentsPanel = () => {
     useState<StudentDTO | undefined>();
   const { refreshDashboard } = useDashboardRefresh();
   const formRef = useRef<HTMLDivElement | null>(null);
+  const sanitizedInitialData = useMemo(() => {
+    if (!editingStudent) return undefined;
+    const safeClassName = CLASS_NAMES.includes(editingStudent.className as any)
+      ? (editingStudent.className as (typeof CLASS_NAMES)[number])
+      : "";
+    return { ...editingStudent, className: safeClassName } as any;
+  }, [editingStudent]);
 
   useEffect(() => {
     if (editingStudent && formRef.current) {
@@ -209,7 +216,7 @@ export const StudentsPanel = () => {
             <StudentForm
               mode={editingStudent ? "edit" : "create"}
               studentId={editingStudent?._id}
-              initialData={editingStudent}
+              initialData={sanitizedInitialData}
               onSuccess={async () => {
                 await mutate();
                 await refreshDashboard([
