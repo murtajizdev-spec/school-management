@@ -55,6 +55,7 @@ export async function GET(request: Request) {
           $cond: [
             { $gt: [{ $size: "$fees" }, 0] },
             {
+              // Student has fee record - use amountDue - amountPaid
               $max: [
                 {
                   $subtract: ["$feeRecord.amountDue", "$feeRecord.amountPaid"],
@@ -62,7 +63,28 @@ export async function GET(request: Request) {
                 0,
               ],
             },
-            "$monthlyFee",
+            {
+              // No fee record - use monthly fee after scholarship
+              $max: [
+                {
+                  $subtract: [
+                    "$monthlyFee",
+                    {
+                      $multiply: [
+                        "$monthlyFee",
+                        {
+                          $divide: [
+                            { $ifNull: ["$scholarshipPercent", 0] },
+                            100,
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+                0,
+              ],
+            },
           ],
         },
         paidAmount: {

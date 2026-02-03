@@ -63,10 +63,28 @@ const outstandingForMonthYear = async (month: number, year: number) => {
     { $addFields: { feeRecord: { $arrayElemAt: ["$fees", 0] } } },
     {
       $addFields: {
+        // Calculate monthly fee after scholarship for students without fee records
+        netMonthlyFee: {
+          $subtract: [
+            "$monthlyFee",
+            {
+              $multiply: [
+                "$monthlyFee",
+                {
+                  $divide: [
+                    { $ifNull: ["$scholarshipPercent", 0] },
+                    100,
+                  ],
+                },
+              ],
+            },
+          ],
+        },
         outstanding: {
           $cond: [
             { $gt: [{ $size: "$fees" }, 0] },
             {
+              // Student has fee record - use amountDue - amountPaid
               $max: [
                 {
                   $subtract: ["$feeRecord.amountDue", "$feeRecord.amountPaid"],
@@ -74,7 +92,28 @@ const outstandingForMonthYear = async (month: number, year: number) => {
                 0,
               ],
             },
-            "$monthlyFee",
+            {
+              // No fee record - use monthly fee after scholarship
+              $max: [
+                {
+                  $subtract: [
+                    "$monthlyFee",
+                    {
+                      $multiply: [
+                        "$monthlyFee",
+                        {
+                          $divide: [
+                            { $ifNull: ["$scholarshipPercent", 0] },
+                            100,
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+                0,
+              ],
+            },
           ],
         },
       },

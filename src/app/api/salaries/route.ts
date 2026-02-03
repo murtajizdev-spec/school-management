@@ -86,12 +86,17 @@ export async function POST(request: Request) {
 
   await payment.populate("teacher");
 
+  // Set expense date to the first day of the salary payment month/year in UTC
+  // Using UTC at noon (12:00) ensures the date is always in the correct month
+  // regardless of server timezone, preventing timezone conversion issues
+  const expenseDate = new Date(Date.UTC(parsed.data.year, parsed.data.month - 1, 1, 12, 0, 0));
+
   const expense = await ExpenseModel.create({
     title: `Salary: ${teacher.name}`,
     category: "teacher-salary",
     amount: parsed.data.amount,
     notes: parsed.data.remarks,
-    incurredOn: new Date(),
+    incurredOn: expenseDate,
     slipNumber,
   });
 

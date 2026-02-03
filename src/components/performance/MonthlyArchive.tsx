@@ -247,7 +247,7 @@ export const MonthlyArchive = () => {
             </p>
           </div>
           <p className="text-xs" style={{ color: "var(--text-secondary-muted)" }}>
-            Updated {format(new Date(), "PPpp")}
+            Updated {clientNow ? format(clientNow, "PPpp") : "—"}
           </p>
         </div>
 

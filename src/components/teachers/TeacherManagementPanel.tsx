@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { motion } from "framer-motion";
 import {
   GraduationCap,
@@ -23,6 +23,7 @@ export const TeacherManagementPanel = () => {
   const { data: teachers, mutate } = useSWR<TeacherDTO[]>("/api/teachers");
   const { data: salaries, mutate: mutateSalaries } =
     useSWR<SalaryPaymentDTO[]>("/api/salaries");
+  const { mutate: globalMutate } = useSWRConfig();
   const [search, setSearch] = useState("");
   const [editingTeacher, setEditingTeacher] = useState<TeacherDTO | undefined>();
   const [slip, setSlip] = useState<SalaryPaymentDTO | undefined>();
@@ -298,9 +299,22 @@ export const TeacherManagementPanel = () => {
           <div className="mt-6">
             <SalaryPaymentForm
               teachers={teachers ?? []}
-              onSuccess={(payment) => {
+              onSuccess={async (payment) => {
                 setSlip(payment);
-                mutateSalaries();
+                // Refresh all related data
+                await Promise.all([
+                  mutateSalaries(),
+                  globalMutate("/api/expenses"),
+                  globalMutate("/api/expenses/summary"),
+                  // refresh expenses and expense summary so expense breakdown/chart updates immediately
+                  refreshDashboard([
+                    "/api/expenses",
+                    "/api/expenses/summary",
+                    "/api/salaries",
+                    "/api/dashboard/overview",
+                    "/api/dashboard/periods",
+                  ]),
+                ]);
               }}
             />
           </div>
